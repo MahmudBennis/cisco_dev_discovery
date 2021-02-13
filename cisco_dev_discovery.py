@@ -94,6 +94,8 @@ def find_matches (device_name, cdp_cmd_output, device_ip):
     else:
         for match in matches:
             match = re.sub('\.\w+\.com', '', match)
+            match = re.sub('(Platform:\s*.+),\s*(Capabilities:\s*.+)', '  \\1\n  \\2', match)
+            match = re.sub('(Version :)\n(.+),', '  \\1 \\2', match)
             if match not in match_set:
                 match_set.add(match)
                 # print(match)
