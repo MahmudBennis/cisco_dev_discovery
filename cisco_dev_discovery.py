@@ -7,8 +7,6 @@ import netmiko
 import paramiko
 from netmiko import ConnectHandler
 
-direc = 'Z:\Routing & Switching Unit\PythonCodes'
-jopsDirec = 'Z:\Routing & Switching Unit\PythonCodes\JOPS'
 timeStamp = time.strftime("__[%Y.%b.%d].[%I.%M.%S.%p]")
 
 device_type = "cisco_ios"
