@@ -39,4 +39,4 @@ class CiscoConnect:
         return output
 
     def disconnect(self):
-        self.dev_connect.disconnect()
+       return self.dev_connect.disconnect()

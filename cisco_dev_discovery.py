@@ -38,7 +38,7 @@ def connect (dev_ip):
 
 def find_subinterfaces_dev(dev_object):
     int_br_cmd = 'sh ip inter br | in ^[^ ]+\\.[0-9]+.+up.+up'
-    int_br_cmd_output = dev_object.dev_connect.send_command(int_br_cmd)
+    int_br_cmd_output = dev_object.send_cmnd(int_br_cmd)
     regex = '''(?:\S+\.\d+\s+\d+\.\d+\.\d+\.\d+)'''
     pattern = re.compile(regex)
     matches = pattern.findall(int_br_cmd_output)
@@ -52,7 +52,7 @@ def find_subinterfaces_dev(dev_object):
         for m in matches:
             match_pices = str.split(m)
             # print(match_pices[0])
-            sh_ip_arp_output = dev_object.dev_connect.send_command("sh ip arp " + match_pices[0])
+            sh_ip_arp_output = dev_object.send_cmnd("sh ip arp " + match_pices[0])
             regex = '''(\d+\.\d+\.\d+\.\d+)\s+\d+'''
             pattern = re.compile(regex)
             arp_matches = pattern.findall(sh_ip_arp_output)
@@ -84,7 +84,7 @@ def find_matches (device_name, cdp_cmd_output, device_ip):
             match = re.sub('(Version :)\n(.+),', '  \\1 \\2', match)
             if match not in match_set:
                 match_set.add(match)
-                # print(match)
+                print(match)
                 match_lines_list = str.splitlines(match)
                 device_ip = re.findall(re.compile('\d+\.\d+\.\d+\.\d+'), match_lines_list[1])
 
@@ -99,7 +99,7 @@ def check_find(dev_object):
         device_names_list.append(device_name)
         if device_name.__contains__("ASR"):
             find_subinterfaces_dev(dev_object)
-        cmd_output = dev_object.dev_connect.send_command(command)
+        cmd_output = dev_object.send_cmnd(command)
         if len(cmd_output.strip()) > 1:
             dev_object.disconnect()
             find_matches(device_name, cmd_output, device_ip)
