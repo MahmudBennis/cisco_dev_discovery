@@ -25,16 +25,14 @@ ips_list = []
 device_names_list = []
 dev_obj = None
 
-def connect (dev_ip):
+def connect_to_dev (dev_ip):
     if dev_ip not in ips_list:
         ips_list.append(dev_ip)
         dev_obj = CiscoConnect(device_type, dev_ip, username, password)
-        c= dev_obj.connect()
-        if c is not None:
-            return dev_obj
-        else:
+        connection = dev_obj.connect()
+        if connection is None:
             dev_obj = None
-            return dev_obj
+        return dev_obj
 
 def find_subinterfaces_dev(dev_object):
     int_br_cmd = 'sh ip inter br | in ^[^ ]+\\.[0-9]+.+up.+up'
@@ -63,8 +61,7 @@ def find_subinterfaces_dev(dev_object):
             else:
                 for i in arp_matches:
                     # print(m)
-
-                    dev_obj = connect(i)
+                    dev_obj = connect_to_dev(i)
                     if dev_obj is not None:
                         check_find(dev_obj)
 
@@ -84,11 +81,10 @@ def find_matches (device_name, cdp_cmd_output, device_ip):
             match = re.sub('(Version :)\n(.+),', '  \\1 \\2', match)
             if match not in match_set:
                 match_set.add(match)
-                print(match)
+                # print(match)
                 match_lines_list = str.splitlines(match)
                 device_ip = re.findall(re.compile('\d+\.\d+\.\d+\.\d+'), match_lines_list[1])
-
-                dev_obj = connect(device_ip.pop())
+                dev_obj = connect_to_dev(device_ip.pop())
                 if dev_obj is not None:
                     check_find(dev_obj)
 
@@ -111,7 +107,7 @@ def print_matches():
 
 if __name__ == '__main__':
     sys.stdout = open('matches_set@' + str(timeStamp) + ".txt", 'w')
-    dev_obj = connect(ip)
+    dev_obj = connect_to_dev(ip)
     if dev_obj is not None:
         check_find(dev_obj)
     print_matches()
