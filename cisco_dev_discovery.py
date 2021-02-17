@@ -7,78 +7,66 @@ import netmiko
 import paramiko
 from netmiko import ConnectHandler
 
+from cisco_connect import CiscoConnect
+
 timeStamp = time.strftime("__[%Y.%b.%d].[%I.%M.%S.%p]")
 
 device_type = "cisco_ios"
-username = input('Enter the username: ')
-password = input('Enter the password: ')
-ip = input('Enter the seed device IP: ')
+username = "net-auto"
+    # input('Enter the username: ')
+password = "N3t.@u701820"
+    # input('Enter the password: ')
+ip = "10.0.2.64"
+    # input('Enter the seed device IP: ')
+command = "show cdp neighbors detail | in Device ID:.+\\.com|IP address:|Platform|Version"
 
 match_set = {""}
 ips_list = []
 device_names_list = []
+dev_obj = None
 
-def connect (devices):
-    cdp_cmd = "show cdp neighbors detail | in Device ID:.+\\.com|IP address:|Platform|Version"
-    int_br_cmd = "sh ip inter br | in ^[^ ]+\\.[0-9]+.+up.+up"
-    for device_para in devices:
-        try:
-            if device_para.get('ip') not in ips_list:
-                ips_list.append(device_para.get('ip'))
-                net_connect = ConnectHandler(**device_para)
-                device_name = net_connect.find_prompt()
-                device_ip = device_para.get('ip')
-                # device_name = device_name.replace('#', '')
-                if device_name not in device_names_list:
-                    device_names_list.append(device_name)
-                    if device_name.__contains__("ASR"):
-                        int_br_cmd_output = net_connect.send_command(int_br_cmd)
-                        find_subinterfaces_dev(device_name, int_br_cmd_output, device_ip, net_connect)
-                    cdp_cmd_output = net_connect.send_command(cdp_cmd)
-                    # print(device_name + " >> " + device_para.get('ip'))
-                    find_matches(device_name, cdp_cmd_output, device_ip)
-                    net_connect.disconnect()
-        except paramiko.ssh_exception.AuthenticationException:
-            print("\nDevice ID: \"I\'ve got an Authentication error\"")
-            print(" IP address: {}".format(device_para.get('ip')))
-            pass
-        except netmiko.ssh_exception.NetMikoTimeoutException:
-            print("\nDevice ID: \"This Device is UnReachable\"")
-            print(" IP address: {}".format(device_para.get('ip')))
-            pass
-        except Exception as e:
-            print("\nDevice ID: \"There is an Error, Maybe the command is invalid for me\"")
-            print(" IP address: {}".format(device_para.get('ip')))
-            print(' Error Message: \"' + str(e) + '\"')
-            pass
+def connect (dev_ip):
+    if dev_ip not in ips_list:
+        ips_list.append(dev_ip)
+        dev_obj = CiscoConnect(device_type, dev_ip, username, password)
+        c= dev_obj.connect()
+        if c is not None:
+            return dev_obj
+        else:
+            dev_obj = None
+            return dev_obj
 
-def find_subinterfaces_dev(Device_Name, int_br_cmd_output, device_ip, net_connect):
+def find_subinterfaces_dev(dev_object):
+    int_br_cmd = 'sh ip inter br | in ^[^ ]+\\.[0-9]+.+up.+up'
+    int_br_cmd_output = dev_object.dev_connect.send_command(int_br_cmd)
     regex = '''(?:\S+\.\d+\s+\d+\.\d+\.\d+\.\d+)'''
     pattern = re.compile(regex)
     matches = pattern.findall(int_br_cmd_output)
     # print(matches)
     matches = set(matches)
     if len(matches) < 1:
-        print("\nDevice ID: {}".format(Device_Name))
-        print(" IP address: " + device_ip)
+        print("\nDevice ID: {}".format(dev_object.device_name))
+        print(" IP address: " + dev_object.device_ip)
         print(" Note: I don't have any sub-interfaces in up up state")
     else:
         for m in matches:
             match_pices = str.split(m)
-            # print(match_pices[1])
-            sh_ip_arp_output = net_connect.send_command("sh ip arp " + match_pices[0])
+            # print(match_pices[0])
+            sh_ip_arp_output = dev_object.dev_connect.send_command("sh ip arp " + match_pices[0])
             regex = '''(\d+\.\d+\.\d+\.\d+)\s+\d+'''
             pattern = re.compile(regex)
             arp_matches = pattern.findall(sh_ip_arp_output)
             if len(arp_matches) < 1:
-                print("\nDevice ID: {}".format(Device_Name))
-                print(" IP address: " + device_ip)
+                print("\nDevice ID: {}".format(dev_object.device_name))
+                print(" IP address: " + dev_object.device_ip)
                 print(" Note: Currently, the network device connected to \"" + match_pices[0] + "\" is down")
             else:
-                for m in arp_matches:
+                for i in arp_matches:
                     # print(m)
-                    device_para = [{'device_type': device_type, 'ip': m, 'username': username, 'password': password}]
-                    connect(device_para)
+
+                    dev_obj = connect(i)
+                    if dev_obj is not None:
+                        check_find(dev_obj)
 
 def find_matches (device_name, cdp_cmd_output, device_ip):
     regex = '''(Device ID: .+\s+IP address:\s+\d+\.\d+\.\d+\.\d+\s*Platform:.+\s*Capabilities:.+\s*Version :\s*.+Version \S+)'''
@@ -99,15 +87,31 @@ def find_matches (device_name, cdp_cmd_output, device_ip):
                 # print(match)
                 match_lines_list = str.splitlines(match)
                 device_ip = re.findall(re.compile('\d+\.\d+\.\d+\.\d+'), match_lines_list[1])
-                device_para = [
-                    {'device_type': device_type, 'ip': device_ip.pop(), 'username': username, 'password': password}]
-                connect(device_para)
 
-if __name__ == '__main__':
-    # os.chdir(direc)
-    sys.stdout = open('matches_set@' + str(timeStamp) + ".txt", 'w')
-    device_para = [{'device_type': device_type, 'ip': ip, 'username': username, 'password': password}]
-    connect(device_para)
+                dev_obj = connect(device_ip.pop())
+                if dev_obj is not None:
+                    check_find(dev_obj)
+
+def check_find(dev_object):
+    device_name = dev_object.device_name
+    device_ip = dev_object.device_ip
+    if device_name not in device_names_list:
+        device_names_list.append(device_name)
+        if device_name.__contains__("ASR"):
+            find_subinterfaces_dev(dev_object)
+        cmd_output = dev_object.dev_connect.send_command(command)
+        if len(cmd_output.strip()) > 1:
+            dev_object.disconnect()
+            find_matches(device_name, cmd_output, device_ip)
+
+def print_matches():
     for m in sorted(match_set):
         print('\n'+m)
     sys.stdout.close()
+
+if __name__ == '__main__':
+    sys.stdout = open('matches_set@' + str(timeStamp) + ".txt", 'w')
+    dev_obj = connect(ip)
+    if dev_obj is not None:
+        check_find(dev_obj)
+    print_matches()
