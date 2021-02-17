@@ -9,7 +9,6 @@ class CiscoConnect:
     device_ip = ''
     dev_connect = None
 
-
     def __init__(self, device_type, ip, username, password):
         self.device_para = {'device_type': device_type, 'ip': ip, 'username': username, 'password': password}
         self.device_ip = ip
