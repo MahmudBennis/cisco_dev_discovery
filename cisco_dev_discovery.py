@@ -34,7 +34,7 @@ def connect_to_dev (dev_ip):
             dev_obj = None
         return dev_obj
 
-def find_subinterfaces_dev(dev_object):
+def find_subinterfaces_matches(dev_object):
     int_br_cmd = 'sh ip inter br | in ^[^ ]+\\.[0-9]+.+up.+up'
     int_br_cmd_output = dev_object.send_cmnd(int_br_cmd)
     regex = '''(?:\S+\.\d+\s+\d+\.\d+\.\d+\.\d+)'''
@@ -65,7 +65,7 @@ def find_subinterfaces_dev(dev_object):
                     if dev_obj is not None:
                         check_find(dev_obj)
 
-def find_matches (device_name, cdp_cmd_output, device_ip):
+def find_cdp_matches (device_name, cdp_cmd_output, device_ip):
     regex = '''(Device ID: .+\s+IP address:\s+\d+\.\d+\.\d+\.\d+\s*Platform:.+\s*Capabilities:.+\s*Version :\s*.+Version \S+)'''
     pattern = re.compile(regex)
     matches = pattern.findall(cdp_cmd_output)
@@ -79,10 +79,10 @@ def find_matches (device_name, cdp_cmd_output, device_ip):
             match = re.sub('\.\w+\.com', '', match)
             match = re.sub('(Platform:\s*.+),\s*(Capabilities:\s*.+)', '  \\1\n  \\2', match)
             match = re.sub('(Version :)\n(.+),', '  \\1 \\2', match)
-            if match not in match_set:
+            match_lines_list = str.splitlines(match)
+            new_match_dev_id = re.findall(re.compile('Device ID: \S+$'), match_lines_list[0]).pop()
+            if match not in match_set and new_match_dev_id not in str(match_set):
                 match_set.add(match)
-                # print(match)
-                match_lines_list = str.splitlines(match)
                 device_ip = re.findall(re.compile('\d+\.\d+\.\d+\.\d+'), match_lines_list[1])
                 dev_obj = connect_to_dev(device_ip.pop())
                 if dev_obj is not None:
@@ -94,11 +94,11 @@ def check_find(dev_object):
     if device_name not in device_names_list:
         device_names_list.append(device_name)
         if device_name.__contains__("ASR"):
-            find_subinterfaces_dev(dev_object)
+            find_subinterfaces_matches(dev_object)
         cmd_output = dev_object.send_cmnd(command)
         if len(cmd_output.strip()) > 1:
             dev_object.disconnect()
-            find_matches(device_name, cmd_output, device_ip)
+            find_cdp_matches(device_name, cmd_output, device_ip)
 
 def print_matches():
     for m in sorted(match_set):
