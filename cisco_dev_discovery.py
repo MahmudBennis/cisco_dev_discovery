@@ -7,12 +7,9 @@ from cisco_connect import CiscoConnect
 timeStamp = time.strftime("__[%Y.%b.%d].[%I.%M.%S.%p]")
 
 device_type = "cisco_ios"
-username = "net-auto"
-    # input('Enter the username: ')
-password = "N3t.@u701820"
-    # input('Enter the password: ')
-ip = "10.0.2.64"
-    # input('Enter the seed device IP: ')
+username = input('Enter the username: ')
+password = input('Enter the password: ')
+ip = input('Enter the seed device IP: ')
 
 match_set = {""}
 ips_list = []
